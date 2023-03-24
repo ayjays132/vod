@@ -205,12 +205,40 @@ url = "https://www.example.com"
 # send a GET request to the webpage
 response = requests.get(url)
 
-# parse the HTML content of the response using BeautifulSoup
-soup = BeautifulSoup(response.content, 'html.parser')
+# open the URL and read its content
+response = urlopen(url)
+html_content = response.read()
+
+# create a BeautifulSoup object
+soup = BeautifulSoup(html_content, 'html.parser')
+
+# use BeautifulSoup to parse HTML content
+soup = BeautifulSoup(html_content, 'html.parser')
+
+# find the video element on the webpage and extract its source URL
+video_element = soup.find('video')
+if video_element is not None:
+    video_url = video_element.get('src')
+    if video_url is not None:
+        file_extension = os.path.splitext(video_url)[1]
+        if file_extension in ['.mp4', '.mkv']:
+            # process and play the video file
+            pass
+        else:
+            print('Invalid file format')
+    else:
+        print('Video URL not found')
+else:
+    print('Video element not found')
+
+
+
 
 # find the video element on the webpage and extract its source URL
 video_element = soup.find('video')
 video_url = video_element['src']
+
+
 
 # determine the file extension of the video by looking at the URL
 file_extension = os.path.splitext(video_url)[1]
@@ -236,7 +264,6 @@ if os.path.isfile(video_path) and mimetypes.guess_type(video_path)[0].startswith
     play_video(edited_video_path, f"edited_video{video_format}")
 else:
     print("Invalid video file path.")
-
 
 
 # define function to generate thumbnail from video file
