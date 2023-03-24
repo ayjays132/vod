@@ -1,5 +1,5 @@
 import os
-import pyav
+import av
 import ffmpeg
 import moviepy.editor as mp
 import pyautogui
@@ -16,9 +16,14 @@ import vlc
 from moviepy import editor as mp
 import spacy
 import re
-from js import document
 import cv2
 import random
+from tkinter import Frame
+
+root = tk.Tk()
+root.title("Video Player")
+
+
 
 class VideoPlayer(Frame):
     def __init__(self, master, video_path):
@@ -221,45 +226,51 @@ def play_clip(video_path):
     clip.preview(fps=25)
 
 def select_video():
-    global cap
-    # open file dialog to select video file
-    file_path = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4;*.avi;*.mkv")])
-    
-    # check file extension
-    ext = os.path.splitext(file_path)[1]
-    
-    # select appropriate processing and playback functions based on file extension
-    if ext == '.mp4' or ext == '.avi':
-        cap = cv2.VideoCapture(file_path)
-        while True:
-            ret, frame = cap.read()
-            if ret:
-                # pause video if paused flag is set
-                if paused:
-                    continue
-                cv2.imshow('Video Player', frame)
-                if cv2.waitKey(25) & 0xFF == ord('q'):
-                    break
-            else:
+    video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4 *.mov *.avi")])
+    if video_path:
+        play_video(video_path)
+
+select_button = ttk.Button(root, text="Select Video", command=select_video)
+select_button.pack()
+
+root.mainloop()
+
+# check file extension
+ext = os.path.splitext(file_path)[1]
+
+# select appropriate processing and playback functions based on file extension
+if ext == '.mp4' or ext == '.avi':
+    cap = cv2.VideoCapture(file_path)
+    while True:
+        ret, frame = cap.read()
+        if ret:
+            # pause video if paused flag is set
+            if paused:
+                continue
+            cv2.imshow('Video Player', frame)
+            if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
-        cap.release()
-        cv2.destroyAllWindows()
-        
-        # generate thumbnail from video file
-        thumbnail = generate_thumbnail(file_path)
-        Image.fromarray(thumbnail)
-        
-        # create label to display thumbnail
-        thumbnail_label = ttk.Label(root, image=thumbnail)
-        thumbnail_label.grid(row=0, column=0)
-        
-        # play clip when hovering over thumbnail
-        thumbnail_label.bind("<Enter>", lambda event: play_clip(file_path))
-    elif ext == '.mkv':
-        # process and play MKV video using appropriate library or command line tool
-        pass
-    else:
-        print('Invalid file format')
+        else:
+            break
+    cap.release()
+    cv2.destroyAllWindows()
+
+    # generate thumbnail from video file
+    thumbnail = generate_thumbnail(file_path)
+    Image.fromarray(thumbnail)
+
+    # create label to display thumbnail
+    thumbnail_label = ttk.Label(root, image=thumbnail)
+    thumbnail_label.grid(row=0, column=0)
+
+    # play clip when hovering over thumbnail
+    thumbnail_label.bind("<Enter>", lambda event: play_clip(file_path))
+elif ext == '.mkv':
+    # process and play MKV video using appropriate library or command line tool
+    pass
+else:
+    print('Invalid file format')
+
         
 # create button to select video file
 select_button = ttk.Button(root, text="Select Video", command=select_video)
