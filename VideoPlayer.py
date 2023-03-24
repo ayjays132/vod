@@ -27,20 +27,26 @@ import numpy as np
 from PIL import Image, ImageTk
 from io import BytesIO
 from urllib.request import urlopen
+from tkinter import Button
+from tkinter import Tk, filedialog, simpledialog
+from tkinter import Tk
+from moviepy.editor import VideoFileClip
+
+
+
+
+
+
+
+SUPPORTED_FILE_EXTENSIONS = {".mp4", ".mkv", ".avi", ".flv", ".wmv", ".mov"}
 
 root = tk.Tk()
-root.title("Video Player")
 
+root.withdraw()
 
-
-class VideoPlayer(Frame):
-    def __init__(self, master, video_path):
-        super().__init__(master)
-        self.master = master
-        self.pack()
-        self.create_widgets()
-
-    def create_widgets(self):
+class VideoPlayerWidget(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
         self.instance = vlc.Instance()
         self.player = self.instance.media_player_new()
 
@@ -57,55 +63,112 @@ class VideoPlayer(Frame):
         self.play_button.pack()
 
         # Create a progress bar to show the playback progress
-        self.progress_bar = ttk.Progressbar(self, orient=HORIZONTAL, length=200, mode='determinate')
+        self.progress_bar = ttk.Progressbar(self, orient='horizontal', length=200, mode='determinate')
         self.progress_bar.pack()
 
         # Create a volume control slider
-        self.volume_slider = ttk.Scale(self, from_=0, to=100, orient=HORIZONTAL, command=self.set_volume)
+        self.volume_slider = ttk.Scale(self, from_=0, to=100, orient='horizontal', command=self.set_volume)
         self.volume_slider.pack()
 
-         # Create a Scale widget for volume control
-        self.volume_scale = ttk.Scale(self.controls_frame, from_=0, to=1, orient="horizontal", value=self.player.audio_get_volume(), command=self.set_volume)
-        self.volume_scale.pack(side="left", padx=5)
+        self.parent = parent
 
         # Set the initial volume level
         self.volume = self.player.audio_get_volume()
-     
-        thumbnail_label = ttk.Label(root, image=thumbnail)
-        thumbnail_label.pack(side='left', padx=10, pady=10)  # Change the parameters to adjust placement and padding
-        thumbnail_label.grid(row=1, column=0, padx=10, pady=10)  # Change the parameters to adjust placement and padding
-      
-     
-        self.parent = parent
-        self.video_path = video_path
-        self.thumbnail_dir = thumbnail_dir
-        self.thumbnail_images = []
-        self.thumbnail_widget = tk.Label(self, bg='black')
-        self.thumbnail_widget.pack(side='left')
-        self.progressbar = ttk.Scale(self, orient='horizontal', from_=0, to=100, command=self.on_seek)
-        self.progressbar.pack(fill='x')
-        self.current_time_label = tk.Label(self, text='0:00')
-        self.current_time_label.pack(side='left')
-        self.duration_label = tk.Label(self, text='0:00')
-        self.duration_label.pack(side='right')
-        self.play_button = tk.Button(self, text='Play', command=self.on_play_pause)
-        self.play_button.pack(side='left')
-        self.mute_button = tk.Button(self, text='Mute', command=self.on_mute_unmute)
-        self.mute_button.pack(side='right')
-        self.volume_slider = ttk.Scale(self, orient='horizontal', from_=0, to=100, command=self.on_volume_change)
-        self.volume_slider.pack(side='right')
-        self.volume_slider.set(50)
-        self.playback_speed_var = tk.StringVar(value='1x')
-        self.playback_speed_menu = tk.OptionMenu(self, self.playback_speed_var, '0.25x', '0.5x', '1x', '1.25x', '1.5x', '2x', command=self.on_playback_speed_change)
-        self.playback_speed_menu.pack(side='right')
-        self.is_playing = False
-        self.is_muted = False
-        self.playback_speed = 1.0
-        self.create_video_player()
-        self.load_thumbnail_images()
-        self.update_ui()
-        self.bind('<Enter>', self.on_hover)
-        self.bind('<Leave>', self.on_leave)
+
+    def open_file(self):
+        file_path = filedialog.askopenfilename()
+        if file_path:
+            media = self.instance.media_new(file_path)
+            self.player.set_media(media)
+            self.play_button.config(text="Play")
+
+    def play_pause(self):
+        if self.player.get_state() == vlc.State.Playing:
+            self.player.pause()
+            self.play_button.config(text="Play")
+        else:
+            self.player.play()
+            self.play_button.config(text="Pause")
+
+    def set_volume(self, volume):
+        self.player.audio_set_volume(int(volume))
+
+
+
+
+        
+
+        self.init_ui()
+
+    def init_ui(self):
+        # create a frame for the video player
+        video_frame = tk.Frame(self.master)
+        video_frame.pack(side=tk.TOP)
+
+        # create the video player
+        self.video_player = VideoElement(video_frame)
+
+        # create a frame for the playback controls
+        controls_frame = tk.Frame(self.master)
+        controls_frame.pack(side=tk.TOP, padx=10, pady=10)
+
+        # create the playback controls
+        self.create_play_button(controls_frame)
+        self.create_stop_button(controls_frame)
+        self.create_progress_bar(controls_frame)
+        self.create_current_time_label(controls_frame)
+        self.create_duration_label(controls_frame)
+        self.create_playback_speed_menu(controls_frame)
+        self.create_thumbnail_widget(controls_frame)
+
+    def create_play_button(self, parent):
+        button = tk.Button(parent, text='Play', command=self.play)
+        button.pack(side=tk.LEFT)
+
+    def create_stop_button(self, parent):
+        button = tk.Button(parent, text='Stop', command=self.stop)
+        button.pack(side=tk.LEFT, padx=10)
+
+    def create_progress_bar(self, parent):
+        self.progressbar = tk.Scale(parent, from_=0, to=100, orient=tk.HORIZONTAL, command=self.set_position)
+        self.progressbar.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    def create_current_time_label(self, parent):
+        self.current_time_label = tk.Label(parent, text='00:00')
+        self.current_time_label.pack(side=tk.LEFT, padx=10)
+
+    def create_duration_label(self, parent):
+        self.duration_label = tk.Label(parent, text='00:00')
+        self.duration_label.pack(side=tk.LEFT, padx=10)
+
+    def create_playback_speed_menu(self, parent):
+        self.playback_speed_var = tk.StringVar()
+        self.playback_speed_var.set('1.0x')
+        menu = tk.OptionMenu(parent, self.playback_speed_var, '0.5x', '1.0x', '1.5x', '2.0x', command=self.set_playback_speed)
+        menu.pack(side=tk.LEFT, padx=10)
+
+    def create_thumbnail_widget(self, parent):
+        self.thumbnail_widget = tk.Label(parent)
+        self.thumbnail_widget.pack(side=tk.RIGHT)
+
+
+
+
+
+    def stop(self):
+        # stop the video playback
+        self.player.stop()
+
+    def set_position(self, value):
+        # set the playback position of the video
+        self.player.set_position(float(value) / 100)
+
+    def update_progress(self):
+        # update the progress bar with the current playback position
+        if self.player.is_playing():
+            position = self.player.get_position()
+            self.progress_bar.set(int(position * 100))
+        self.after(100, self.update_progress)
 
 
 def update_ui(self):
@@ -329,264 +392,45 @@ speeds = [1, 2, 4, 8]
 # Initialize default speed index
 current_speed_index = 0
 
-# replace this with the URL of the webpage containing the video
-url = "https://www.example.com"
 
-# send a GET request to the webpage
-response = requests.get(url)
+def play_video(self):
+    # Create a media object for the selected video file
+    media = self.instance.media_new(self.video_path)
 
-# open the URL and read its content
-response = urlopen(url)
-html_content = response.read()
+    # Set the media to be played by the player
+    self.player.set_media(media)
 
-# create a BeautifulSoup object
-soup = BeautifulSoup(html_content, 'html.parser')
+    # Set the volume level
+    self.player.audio_set_volume(int(self.volume_slider.get()))
 
-# use BeautifulSoup to parse HTML content
-soup = BeautifulSoup(html_content, 'html.parser')
+    # Start playing the video
+    self.player.play()
 
-# find the video element on the webpage and extract its source URL
-video_element = soup.find('video')
-if video_element is not None:
-    video_url = video_element.get('src')
-    if video_url is not None:
-        file_extension = os.path.splitext(video_url)[1]
-        if file_extension in ['.mp4', '.mkv']:
-            # process and play the video file
-            pass
-        else:
-            print('Invalid file format')
-    else:
-        print('Video URL not found')
-else:
-    print('Video element not found')
+    # Set the maximum value of the progress bar to the duration of the video
+    self.progress_bar['maximum'] = int(self.player.get_length() / 1000)
 
+    # Start updating the progress bar every second
+    self.update_progress()
 
+def update_progress(self):
+    # Update the value of the progress bar to the current time of the video
+    self.progress_bar['value'] = int(self.player.get_time() / 1000)
 
+    # Update the current time label
+    current_time = int(self.player.get_time() / 1000)
+    current_time_str = time.strftime('%M:%S', time.gmtime(current_time))
+    self.current_time_label.config(text=current_time_str)
 
-# find the video element on the webpage and extract its source URL
-video_element = soup.find('video')
-video_url = video_element['src']
+    # Update the duration label
+    duration = int(self.player.get_length() / 1000)
+    duration_str = time.strftime('%M:%S', time.gmtime(duration))
+    self.duration_label.config(text=duration_str)
+
+    # Schedule the next update in 1 second
+    self.after(1000, self.update_progress)
 
 
 
-# determine the file extension of the video by looking at the URL
-file_extension = os.path.splitext(video_url)[1]
-
-# call the play_video function with the video URL
-play_video(video_url)
-
-# Automatically detect the video path and format
-video_path = input("Enter the video path: ")
-
-if os.path.isfile(video_path) and mimetypes.guess_type(video_path)[0].startswith('video/'):
-    video_format = os.path.splitext(video_path)[1].lower()
-    print(f"Detected video format: {video_format}")
-
-    # Play the video
-    play_video(video_path)
-
-    # Edit the video
-    edited_video_path = f"edited_video{video_format}"
-    edit_video(video_path, edited_video_path)
-
-    # Play the edited video
-    play_video(edited_video_path, f"edited_video{video_format}")
-else:
-    print("Invalid video file path.")
-
-
-# define function to generate thumbnail from video file
-def generate_thumbnail(video_path):
-    clip = mp.VideoFileClip(video_path)
-    thumbnail = clip.subclip(0, 1).resize((320, 240)).to_RGB()
-    return thumbnail
-
-def play_video(file_path):
-    # check if file is a local video file
-    if os.path.isfile(file_path):
-        # check file extension
-        ext = os.path.splitext(file_path)[1]
-        # select appropriate processing and playback functions based on file extension
-        if ext == '.mp4' or ext == '.avi':
-            cap = cv2.VideoCapture(file_path)
-            while True:
-                ret, frame = cap.read()
-                if ret:
-                    # pause video if paused flag is set
-                    if paused:
-                        continue
-                    cv2.imshow('Video Player', frame)
-                    if cv2.waitKey(25) & 0xFF == ord('q'):
-                        break
-                else:
-                    break
-            cap.release()
-            cv2.destroyAllWindows()
-            
-            # generate thumbnail from video file
-            thumbnail = generate_thumbnail(file_path)
-            Image.fromarray(thumbnail)
-            
-            # create label to display thumbnail
-            thumbnail_label = ttk.Label(root, image=thumbnail)
-            thumbnail_label.grid(row=0, column=0)
-            
-            # play clip when hovering over thumbnail
-            thumbnail_label.bind("<Enter>", lambda event: play_clip(file_path))
-        elif ext == '.mkv':
-            # process and play MKV video using appropriate library or command line tool
-            pass
-        else:
-            print('Invalid file format')
-    # check if file is a YouTube video
-    elif 'youtube.com' in file_path:
-        video = pafy.new(file_path)
-        best = video.getbest(preftype="mp4")
-        url = best.url
-        # download video as bytes
-        video_bytes = urlopen(url).read()
-        # convert bytes to audio data for playback
-        audio_data = pydub.AudioSegment.from_file(BytesIO(video_bytes)).raw_data
-        # convert audio data to numpy array
-        audio_array = np.frombuffer(audio_data, dtype=np.int16)
-        # play audio with sounddevice
-        sd.play(audio_array, video.fps)
-        sd.wait()
-    # check if file is from another source
-    else:
-        # process and play video using appropriate library or command line tool
-        pass
-        
-        # generate thumbnail from video file
-        thumbnail = generate_thumbnail(video_path)
-        thumbnail_img = Image.fromarray(thumbnail)
-        
-        # create label to display thumbnail
-        thumbnail_label.configure(image=thumbnail_img)
-        thumbnail_label.image = thumbnail_img
-        
-      # play clip when hovering over thumbnail
-thumbnail_label.bind("<Enter>", lambda event: play_video(video_path))
-
-# check file extension
-ext = os.path.splitext(video_path)[1]
-
-# select appropriate processing and playback functions based on file extension
-if ext in ['.mp4', '.mov', '.avi']:
-    play_video(video_path)
-elif ext == '.mkv':
-    # process and play MKV video using appropriate library or command line tool
-    pass
-else:
-    print('Invalid file format')
-
-
-
-# define function to play a 10 second clip when hovering over thumbnail
-def play_clip(video_path):
-    clip = mp.VideoFileClip(video_path).subclip(0, 10)
-    clip.preview(fps=25)
-
-# get video path or URL from user
-source = input("Enter video path or URL: ")
-
-# check if source is a URL
-if source.startswith("http"):
-    try:
-        # extract video URL from webpage using BeautifulSoup
-        html = urlopen(source)
-        soup = BeautifulSoup(html, 'html.parser')
-        video_element = soup.find('video')
-        video_url = video_element['src']
-    except:
-        print('Error: could not extract video URL from webpage')
-else:
-    # assume source is a local file path
-    video_path = source
-    ext = os.path.splitext(video_path)[1]
-    if ext == '.mp4':
-        # play MP4 video clip using pydub and sounddevice
-        thumbnail_label.bind("<Enter>", lambda event: play_clip(video_path))
-    elif ext == '.mkv':
-        # process and play MKV video using appropriate library or command line tool
-        pass
-    else:
-        print('Invalid file format')
-        sys.exit()
-        
-    # exit after video is finished playing
-    while True:
-        if not sd.get_stream_active(stream):
-            break
-        time.sleep(1)
-
-def select_video():
-    video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4 *.mov *.avi")])
-    if video_path:
-        play_video(video_path)
-
-select_button = ttk.Button(root, text="Select Video", command=select_video)
-select_button.pack()
-
-root.mainloop()
-
-# check file extension
-ext = os.path.splitext(file_path)[1]
-
-# select appropriate processing and playback functions based on file extension
-if ext == '.mp4' or ext == '.avi':
-    cap = cv2.VideoCapture(file_path)
-    while True:
-        ret, frame = cap.read()
-        if ret:
-            # pause video if paused flag is set
-            if paused:
-                continue
-            cv2.imshow('Video Player', frame)
-            if cv2.waitKey(25) & 0xFF == ord('q'):
-                break
-        else:
-            break
-    cap.release()
-    cv2.destroyAllWindows()
-
-    # generate thumbnail from video file
-    thumbnail = generate_thumbnail(file_path)
-    Image.fromarray(thumbnail)
-
-    # create label to display thumbnail
-    thumbnail_label = ttk.Label(root, image=thumbnail)
-    thumbnail_label.grid(row=0, column=0)
-
-    # play clip when hovering over thumbnail
-    thumbnail_label.bind("<Enter>", lambda event: play_clip(file_path))
-elif ext == '.mkv':
-    # process and play MKV video using appropriate library or command line tool
-    pass
-else:
-    print('Invalid file format')
-
-        
-# create button to select video file
-select_button = ttk.Button(root, text="Select Video", command=select_video)
-select_button.grid(row=1, column=0)
-
-        
-def play_video():
-    global paused
-    paused = False
-
-def pause_video():
-    global paused
-    paused = True
-
-def stop_video():
-    global cap
-    if cap is not None:
-        cap.release()
-        cv2.destroyAllWindows()
-        cap = None
 
 def toggle_speed():
     global current_speed_index, speeds, cap
@@ -684,7 +528,7 @@ cap.release()
 def theater_mode():
     # get the video player element
     video_player = driver.find_element_by_tag_name('video')
-    
+    47
     # hide all elements except video player
     driver.execute_script("var elements = document.body.getElementsByTagName('*'); \
                           for (var i = 0; i < elements.length; i++) { \
@@ -762,11 +606,10 @@ driver.get('https://www.example.com')
 # search for the video player element
 player = driver.find_element_by_xpath('//video')
 
-# extract the URL from the player element
-video_url = player.get_attribute('src')
+
 
 # pop out the video player
-driver.execute_script('window.open(arguments[0], "_blank", "height=480,width=640")', video_url)
+driver.execute_script('window.open(arguments[0], "_blank", "height=480,width=640")',)
 
 # enter theater mode
 ActionChains(driver).move_to_element(player).send_keys(Keys.F11).perform()
@@ -903,4 +746,10 @@ def set_chapter(chapter):
 def get_time():
     current_time = datetime.datetime.now()
     return current_time.strftime("%H:%M:%S")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    player_widget = VideoPlayerWidget(root)
+    player_widget.pack()
+    root.mainloop()
 
