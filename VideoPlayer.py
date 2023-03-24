@@ -19,6 +19,14 @@ import re
 import cv2
 import random
 from tkinter import Frame
+import requests
+from bs4 import BeautifulSoup
+import pafy
+import pydub
+import numpy as np
+from PIL import Image, ImageTk
+from io import BytesIO
+from urllib.request import urlopen
 
 root = tk.Tk()
 root.title("Video Player")
@@ -62,6 +70,44 @@ class VideoPlayer(Frame):
 
         # Set the initial volume level
         self.volume = self.player.audio_get_volume()
+     
+        thumbnail_label = ttk.Label(root, image=thumbnail)
+        thumbnail_label.pack(side='left', padx=10, pady=10)  # Change the parameters to adjust placement and padding
+        thumbnail_label.grid(row=1, column=0, padx=10, pady=10)  # Change the parameters to adjust placement and padding
+
+
+
+def generate_thumbnail(file_path, width=320):
+    # Load video and get its width and height
+    cap = cv2.VideoCapture(file_path)
+    if not cap.isOpened():
+        raise ValueError("Could not open video file")
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    
+    # Calculate new height based on the desired thumbnail width
+    new_height = int(width / height * width)
+    
+    # Create a blank thumbnail image with the desired size
+    thumbnail = np.zeros((new_height, width, 3), np.uint8)
+    
+    # Read first frame from video
+    ret, frame = cap.read()
+    
+    # Loop through video frames and add them to the thumbnail image
+    while ret:
+        # Resize frame to match thumbnail aspect ratio and add to thumbnail image
+        thumbnail_frame = cv2.resize(frame, (width, new_height))
+        thumbnail[0:new_height, :] = thumbnail_frame
+        
+        # Read next frame from video
+        ret, frame = cap.read()
+    
+    # Release video capture object
+    cap.release()
+    
+    # Return thumbnail image
+    return thumbnail
 
             
 
@@ -153,6 +199,25 @@ speeds = [1, 2, 4, 8]
 # Initialize default speed index
 current_speed_index = 0
 
+# replace this with the URL of the webpage containing the video
+url = "https://www.example.com"
+
+# send a GET request to the webpage
+response = requests.get(url)
+
+# parse the HTML content of the response using BeautifulSoup
+soup = BeautifulSoup(response.content, 'html.parser')
+
+# find the video element on the webpage and extract its source URL
+video_element = soup.find('video')
+video_url = video_element['src']
+
+# determine the file extension of the video by looking at the URL
+file_extension = os.path.splitext(video_url)[1]
+
+# call the play_video function with the video URL
+play_video(video_url)
+
 # Automatically detect the video path and format
 video_path = input("Enter the video path: ")
 
@@ -180,44 +245,77 @@ def generate_thumbnail(video_path):
     thumbnail = clip.subclip(0, 1).resize((320, 240)).to_RGB()
     return thumbnail
 
-def play_video(video_path):
-    # Attempt to open the video file
-    try:
-        video = cv2.VideoCapture(video_path)
-    except Exception as e:
-        print(f"Error opening video file: {e}")
-        return
-
-    # Check if the video file was successfully opened
-    if not video.isOpened():
-        print("Error opening video file.")
-        return
-
-    # Create a window for the video player
-    cv2.namedWindow("Video Player", cv2.WINDOW_NORMAL)
-
-    # Play the video
-    while True:
-        # Read a frame from the video
-        ret, frame = video.read()
-
-        # Check if the frame was successfully read
-        if not ret:
-            break
-
-        # Show the frame in the video player window
-        cv2.imshow("Video Player", frame)
-
-        # Check if a key was pressed
-        key = cv2.waitKey(1) & 0xFF
-
-        # Stop the video if the 'q' key is pressed
-        if key == ord('q'):
-            break
-
-    # Release the video file and close the window
-    video.release()
-    cv2.destroyAllWindows()
+def play_video(file_path):
+    # check if file is a local video file
+    if os.path.isfile(file_path):
+        # check file extension
+        ext = os.path.splitext(file_path)[1]
+        # select appropriate processing and playback functions based on file extension
+        if ext == '.mp4' or ext == '.avi':
+            cap = cv2.VideoCapture(file_path)
+            while True:
+                ret, frame = cap.read()
+                if ret:
+                    # pause video if paused flag is set
+                    if paused:
+                        continue
+                    cv2.imshow('Video Player', frame)
+                    if cv2.waitKey(25) & 0xFF == ord('q'):
+                        break
+                else:
+                    break
+            cap.release()
+            cv2.destroyAllWindows()
+            
+            # generate thumbnail from video file
+            thumbnail = generate_thumbnail(file_path)
+            Image.fromarray(thumbnail)
+            
+            # create label to display thumbnail
+            thumbnail_label = ttk.Label(root, image=thumbnail)
+            thumbnail_label.grid(row=0, column=0)
+            
+            # play clip when hovering over thumbnail
+            thumbnail_label.bind("<Enter>", lambda event: play_clip(file_path))
+        elif ext == '.mkv':
+            # process and play MKV video using appropriate library or command line tool
+            pass
+        else:
+            print('Invalid file format')
+    # check if file is a YouTube video
+    elif 'youtube.com' in file_path:
+        video = pafy.new(file_path)
+        best = video.getbest(preftype="mp4")
+        url = best.url
+        # download video as bytes
+        video_bytes = urlopen(url).read()
+        # convert bytes to audio data for playback
+        audio_data = pydub.AudioSegment.from_file(BytesIO(video_bytes)).raw_data
+        # convert audio data to numpy array
+        audio_array = np.frombuffer(audio_data, dtype=np.int16)
+        # play audio with sounddevice
+        sd.play(audio_array, video.fps)
+        sd.wait()
+    # check if file is from another source
+    else:
+        # process and play video using appropriate library or command line tool
+        pass
+        
+        # generate thumbnail from video file
+        thumbnail = generate_thumbnail(video_path)
+        thumbnail_img = Image.fromarray(thumbnail)
+        
+        # create label to display thumbnail
+        thumbnail_label.configure(image=thumbnail_img)
+        thumbnail_label.image = thumbnail_img
+        
+        # play clip when hovering over thumbnail
+        thumbnail_label.bind("<Enter>", lambda event: play_clip(video_path))
+    elif ext == '.mkv':
+        # process and play MKV video using appropriate library or command line tool
+        pass
+    else:
+        print('Invalid file format')
 
 
 # define function to play a 10 second clip when hovering over thumbnail
