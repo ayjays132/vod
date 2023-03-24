@@ -74,6 +74,136 @@ class VideoPlayer(Frame):
         thumbnail_label = ttk.Label(root, image=thumbnail)
         thumbnail_label.pack(side='left', padx=10, pady=10)  # Change the parameters to adjust placement and padding
         thumbnail_label.grid(row=1, column=0, padx=10, pady=10)  # Change the parameters to adjust placement and padding
+      
+     
+        self.parent = parent
+        self.video_path = video_path
+        self.thumbnail_dir = thumbnail_dir
+        self.thumbnail_images = []
+        self.thumbnail_widget = tk.Label(self, bg='black')
+        self.thumbnail_widget.pack(side='left')
+        self.progressbar = ttk.Scale(self, orient='horizontal', from_=0, to=100, command=self.on_seek)
+        self.progressbar.pack(fill='x')
+        self.current_time_label = tk.Label(self, text='0:00')
+        self.current_time_label.pack(side='left')
+        self.duration_label = tk.Label(self, text='0:00')
+        self.duration_label.pack(side='right')
+        self.play_button = tk.Button(self, text='Play', command=self.on_play_pause)
+        self.play_button.pack(side='left')
+        self.mute_button = tk.Button(self, text='Mute', command=self.on_mute_unmute)
+        self.mute_button.pack(side='right')
+        self.volume_slider = ttk.Scale(self, orient='horizontal', from_=0, to=100, command=self.on_volume_change)
+        self.volume_slider.pack(side='right')
+        self.volume_slider.set(50)
+        self.playback_speed_var = tk.StringVar(value='1x')
+        self.playback_speed_menu = tk.OptionMenu(self, self.playback_speed_var, '0.25x', '0.5x', '1x', '1.25x', '1.5x', '2x', command=self.on_playback_speed_change)
+        self.playback_speed_menu.pack(side='right')
+        self.is_playing = False
+        self.is_muted = False
+        self.playback_speed = 1.0
+        self.create_video_player()
+        self.load_thumbnail_images()
+        self.update_ui()
+        self.bind('<Enter>', self.on_hover)
+        self.bind('<Leave>', self.on_leave)
+
+
+def update_ui(self):
+    # update the current time label
+    current_time = self.video_player.get_time() / 1000
+    current_time_str = format_time(current_time)
+    self.current_time_label.config(text=current_time_str)
+
+    # update the progress bar position
+    progress = current_time / self.duration * 100
+    self.progressbar.set(current_time)
+
+    # update the thumbnail image
+    thumbnail_index = int(current_time * THUMBNAIL_FRAMES_PER_SECOND)
+    if thumbnail_index < len(self.thumbnail_images):
+        thumbnail_image = self.thumbnail_images[thumbnail_index]
+        self.thumbnail_widget.config(image=thumbnail_image)
+        self.thumbnail_widget.image = thumbnail_image  # keep a reference to prevent garbage collection
+
+    # update the duration label
+    duration_str = format_time(self.duration)
+    self.duration_label.config(text=duration_str)
+
+    # update the playback speed menu
+    self.playback_speed_var.set(f'{self.playback_speed}x')
+
+    # schedule the next update
+    if self.is_playing:
+        self.after(1000 // VIDEO_FRAME_RATE, self.update_ui)
+
+def on_seek(self, value):
+    # seek to the specified time in the video
+    time_in_seconds = float(value)
+    time_in_milliseconds = int(time_in_seconds * 1000)
+    self.video_player.set_time(time_in_milliseconds)
+    
+def on_play_pause(self):
+    # toggle the play/pause state of the video player
+    if self.is_playing:
+        self.video_player.pause()
+        self.is_playing = False
+        self.play_button.config(text='Play')
+    else:
+        self.video_player.play()
+        self.is_playing = True
+        self.play_button.config(text='Pause')
+        self.update_ui()
+    
+def on_mute_unmute(self):
+    # toggle the mute/unmute state of the video player
+    if self.is_muted:
+        self.video_player.audio_toggle_mute()
+        self.is_muted = False
+        self.mute_button.config(text='Mute')
+    else:
+        self.video_player.audio_toggle_mute()
+        self.is_muted = True
+        self.mute_button.config(text='Unmute')
+        
+def on_volume_change(self, value):
+    # set the volume of the video player
+    volume = int(value)
+    self.video_player.audio_set_volume(volume)
+    
+def on_playback_speed_change(self, value):
+    # set the playback speed of the video player
+    speed_str = self.playback_speed_var.get()
+    speed = float(speed_str[:-1])
+    self.playback_speed = speed
+    self.video_player.set_rate(speed)
+    
+def on_hover(self, event):
+    # show the controls when hovering over the video player
+    self.progressbar.pack_forget()
+    self.current_time_label.pack_forget()
+    self.duration_label.pack_forget()
+    self.play_button.pack_forget()
+    self.mute_button.pack_forget()
+    self.volume_slider.pack_forget()
+    self.playback_speed_menu.pack_forget()
+    
+    self.progressbar.pack(fill='x')
+    self.current_time_label.pack(side='left')
+    self.duration_label.pack(side='right')
+    self.play_button.pack(side='left')
+    self.mute_button.pack(side='right')
+    self.volume_slider.pack(side='right')
+    self.playback_speed_menu.pack(side='right')
+    
+def on_leave(self, event):
+    # hide the controls when leaving the video player
+    self.progressbar.pack_forget()
+    self.current_time_label.pack_forget()
+    self.duration_label.pack_forget()
+    self.play_button.pack_forget()
+    self.mute_button.pack_forget()
+    self.volume_slider.pack_forget()
+    self.playback_speed_menu.pack_forget()
 
 
 
