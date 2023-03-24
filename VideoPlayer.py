@@ -309,19 +309,60 @@ def play_video(file_path):
         thumbnail_label.configure(image=thumbnail_img)
         thumbnail_label.image = thumbnail_img
         
-        # play clip when hovering over thumbnail
-        thumbnail_label.bind("<Enter>", lambda event: play_clip(video_path))
-    elif ext == '.mkv':
-        # process and play MKV video using appropriate library or command line tool
-        pass
-    else:
-        print('Invalid file format')
+      # play clip when hovering over thumbnail
+thumbnail_label.bind("<Enter>", lambda event: play_video(video_path))
+
+# check file extension
+ext = os.path.splitext(video_path)[1]
+
+# select appropriate processing and playback functions based on file extension
+if ext in ['.mp4', '.mov', '.avi']:
+    play_video(video_path)
+elif ext == '.mkv':
+    # process and play MKV video using appropriate library or command line tool
+    pass
+else:
+    print('Invalid file format')
+
 
 
 # define function to play a 10 second clip when hovering over thumbnail
 def play_clip(video_path):
     clip = mp.VideoFileClip(video_path).subclip(0, 10)
     clip.preview(fps=25)
+
+# get video path or URL from user
+source = input("Enter video path or URL: ")
+
+# check if source is a URL
+if source.startswith("http"):
+    try:
+        # extract video URL from webpage using BeautifulSoup
+        html = urlopen(source)
+        soup = BeautifulSoup(html, 'html.parser')
+        video_element = soup.find('video')
+        video_url = video_element['src']
+    except:
+        print('Error: could not extract video URL from webpage')
+else:
+    # assume source is a local file path
+    video_path = source
+    ext = os.path.splitext(video_path)[1]
+    if ext == '.mp4':
+        # play MP4 video clip using pydub and sounddevice
+        thumbnail_label.bind("<Enter>", lambda event: play_clip(video_path))
+    elif ext == '.mkv':
+        # process and play MKV video using appropriate library or command line tool
+        pass
+    else:
+        print('Invalid file format')
+        sys.exit()
+        
+    # exit after video is finished playing
+    while True:
+        if not sd.get_stream_active(stream):
+            break
+        time.sleep(1)
 
 def select_video():
     video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4 *.mov *.avi")])
