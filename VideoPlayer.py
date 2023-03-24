@@ -20,6 +20,87 @@ from js import document
 import cv2
 import random
 
+class VideoPlayer(Frame):
+    def __init__(self, master, video_path):
+        super().__init__(master)
+        self.master = master
+        self.pack()
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.instance = vlc.Instance()
+        self.player = self.instance.media_player_new()
+
+        # Create a frame to hold the video player widget
+        self.video_frame = ttk.Frame(self)
+        self.video_frame.pack()
+
+        # Create a button to open a file dialog and choose a video file
+        self.open_button = ttk.Button(self, text="Open", command=self.open_file)
+        self.open_button.pack()
+
+        # Create a button to play or pause the video
+        self.play_button = ttk.Button(self, text="Play", command=self.play_pause)
+        self.play_button.pack()
+
+        # Create a progress bar to show the playback progress
+        self.progress_bar = ttk.Progressbar(self, orient=HORIZONTAL, length=200, mode='determinate')
+        self.progress_bar.pack()
+
+        # Create a volume control slider
+        self.volume_slider = ttk.Scale(self, from_=0, to=100, orient=HORIZONTAL, command=self.set_volume)
+        self.volume_slider.pack()
+
+         # Create a Scale widget for volume control
+        self.volume_scale = ttk.Scale(self.controls_frame, from_=0, to=1, orient="horizontal", value=self.player.audio_get_volume(), command=self.set_volume)
+        self.volume_scale.pack(side="left", padx=5)
+
+        # Set the initial volume level
+        self.volume = self.player.audio_get_volume()
+
+            
+
+def open_file(self):
+    file_path = filedialog.askopenfilename()
+    if file_path:
+        media = self.instance.media_new(file_path)
+        self.player.set_media(media)
+        self.player.set_hwnd(self.video_frame.winfo_id())
+
+def play_pause(self):
+    if self.player.get_state() == vlc.State.Ended:
+        self.player.stop()
+    elif self.player.get_state() == vlc.State.Playing:
+        self.player.pause()
+        self.play_button.config(text="Play")
+    else:
+        self.player.play()
+        self.play_button.config(text="Pause")
+        self.update_progress()
+
+def update_progress(self):
+    """Updates the progress bar to show the playback progress"""
+    current_time = self.player.get_time() / 1000
+    total_time = self.player.get_length() / 1000
+    progress = (current_time / total_time) * 100
+    self.progress_bar['value'] = progress
+    if self.player.get_state() == vlc.State.Playing:
+        self.after(1000, self.update_progress)
+
+def set_volume(self, volume):
+    # Update the volume of the player
+    self.player.audio_set_volume(float(volume))
+    # Update the volume attribute
+    self.volume = float(volume)
+        
+def update(self):
+    # ...
+
+    # Update the volume scale widget
+    if self.player.audio_get_volume() != self.volume:
+        self.volume_scale.set(self.player.audio_get_volume())
+        self.volume = self.player.audio_get_volume()
+
 
 def edit_video(input_path, output_path):
     # Get the video file extension
