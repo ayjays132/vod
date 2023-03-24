@@ -31,6 +31,7 @@ from tkinter import Button
 from tkinter import Tk, filedialog, simpledialog
 from tkinter import Tk
 from moviepy.editor import VideoFileClip
+import video_player_library
 
 
 
@@ -95,7 +96,8 @@ class VideoPlayerWidget(ttk.Frame):
 
 
 
-
+    def toggle_fullscreen(self):
+        self.master.attributes("-fullscreen", not self.master.attributes("-fullscreen"))
         
 
         self.init_ui()
@@ -565,54 +567,15 @@ def video_pop_out():
     driver.switch_to.window(driver.window_handles[0])
 
 
-# create video player instance
-video_player = video_player_library.VideoPlayer()
 
-def set_volume(volume):
-    global video_player, current_speed_index, speed_options
-
-    # ensure volume is within 0-100 range
-    volume = max(0, min(volume, 100))
-
-    # set volume of video player
-    video_player.set_volume(volume)
-
-# define the browser names and corresponding drivers
-browser_drivers = {
-    'chrome': webdriver.Chrome,
-    'firefox': webdriver.Firefox,
-    'edge': webdriver.Edge,
-    'safari': webdriver.Safari,
-    'opera': webdriver.Opera,
-    'ie': webdriver.Ie,
-    'chromium': lambda: webdriver.Chrome(options=Options().add_argument('--disable-gpu')),
-    'brave': lambda: webdriver.Chrome(options=Options().add_argument('--disable-gpu')),
-    'vivaldi': lambda: webdriver.Chrome(options=Options().add_argument('--disable-gpu')),
-}
-
-# prompt user to enter the browser name
-browser_name = input("Enter browser name: ").lower()
-
-# check if the entered browser name is valid
-if browser_name in browser_drivers:
-    # initialize the corresponding driver for the specified browser
-    driver = browser_drivers[browser_name]()
-else:
-    print('Invalid browser name')
-
-# navigate to the webpage with the video player
-driver.get('https://www.example.com')
-
-# search for the video player element
-player = driver.find_element_by_xpath('//video')
 
 
 
 # pop out the video player
-driver.execute_script('window.open(arguments[0], "_blank", "height=480,width=640")',)
+
 
 # enter theater mode
-ActionChains(driver).move_to_element(player).send_keys(Keys.F11).perform()
+
 
 
 def fullscreen_mode():
@@ -690,20 +653,7 @@ def set_quality(quality):
     else:
         print(f"The video format {file_extension} is not supported.")
 
-current_playlist = []
 
-def set_playlist(playlist):
-    global current_playlist
-    current_playlist = []
-    for url in playlist:
-        # detect video name from URL
-        match = re.search(r'(?<=v=)[^&#]+', url)
-        if match:
-            video_id = match.group(0)
-            current_playlist.append(f"Video {len(current_playlist)+1}: {video_id}")
-    print("Current Playlist:", current_playlist)
-
-set_playlist(["Video 1", "Video 2", "Video 3"])
 
 def set_repeat(repeat):
     # Get the currently selected source element
@@ -752,4 +702,3 @@ if __name__ == "__main__":
     player_widget = VideoPlayerWidget(root)
     player_widget.pack()
     root.mainloop()
-
